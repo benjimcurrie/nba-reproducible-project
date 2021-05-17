@@ -1,0 +1,562 @@
+---
+title: "NBA Reproducible Project"
+author: "Ben Currie"
+date: "06/05/2021"
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## 1. Introduction 
+
+### 1.1.	The scenario
+Following a season where the Chicago Bulls finished with a record of 22 wins and 60 losses (ranked 4th worst in the league, 27th of 30). The General Manager of the Chicago Bulls is investing in the data analytics approach to find the best starting five players for the 2019-20 NBA season. As the data analysis with the Chicago Bulls NBA (National Basketball Association), the team’s owners have set the budget at $118 million (ranked 26th of 30 teams) for player contracts for the 2019-20 season. 
+
+For perspective, the team with the highest payroll budget is Portland with $148 million, while the best performing team was Milwaukee Bucks, who clenched a 60-22 win-loss record in the 2018-19 NBA Season, have a team payroll of $131 million.
+
+### 1.2.	Aim of the project
+The aim of this project is to identify a starting five line-up for the Chicago Bulls in the 2019-20 NBA Season.
+The aim of this project needs to be achieved within the following parameters:
+1.	The starting line-up will need to be made up of a player from each of the traditional starting positions (1) Point Guard, (2) Shooting Guard, (SF) Small Forward, (4) Power Forward, and (5) Centre. 
+2.	The team's budget for player contracts next season is $118 million, and the team’s management will need to complete a full roster (15 players in the 2019-20 NBA Season) for the upcoming season. 
+3.	Team management will require justification for each of the player selections.
+4.	Develop a reproducible data analysis project and generate a knitr report using R Markdown describing your analysis and findings to the General Manager.
+
+### 1.1.	The scenario
+#### 1.3.1.	National Basketball Association (NBA)
+The National Basketball Association (NBA) is a professional basketball league in North America consisting of 29 teams from the United States and 1 team from Canada (the Toronto Raptors). It is the premiere basketball competition in the world.
+
+#### 1.3.2.	Positional Requirements
+Point Guard (PG)
+The point guard (PG) position typically requires a high level of play-making ability. In the modern game, point guards may be considered either a pass-first or shoot-first guard depending on the individual strengths of the player, the make-up of the team around them, and their teams playing style. 
+Positional Key Metrics: PTS_per_game, AST_per_game, TOV_per_game, AST_to_TOV_ratio, STL_per_game
+
+Shooting Guard (SG)
+The shooting guard position has always been one for the best shooters in the competition. SGs need to be able to provide their team with points, should have good shooting percentages, particularly 3-point percentage, but also still be able to move the ball and carry an assist to turnover ratio of greater than 1.00. Shooting guards are not traditionally viewed as being active on the defensive end, however, great shooting guards of the past (Michael Jordan and Kobe Bryant) both won defensive player of the year titles during their playing careers.
+Key Metrics: PTS_per_game, FGM, FGp, 3PM, 3Pp, FTp, AST_per_game, TOV_per_game, AST_to_TOV_ratio, STL_per_game
+
+Small Forward (SF)
+The small forward position is viewed as a “3 & D” position or a “wing” position in the modern game. Successful small forwards in the modern game must be able to spot up and hit the three from the wing, and play good transition defence. 
+Key Metrics: PTS_per_game, TRB_per_game, AST_per_game, FTp, STL_per_game, BLK_per_game
+
+Power Forward (PF)
+Modern PFs need to be able to shoot from range, spreads the floor and provide a range of defensive traits. They are typically strongly built, athletic and able to produce on both ends of the court.
+Key Metrics: Points, Rebounds, FGM, FG%,  FT%, 
+
+Centre (C)
+The modern day C needs to be able to run the floor, spread the court with some shooting range and provide a defensive presence. Modern day C’s are almost the typical power forward of old. 
+Positional Key Metrics: Rebounds, FG%, Blocks 
+
+
+### 1.4.	Justification and importance
+The NBA is one of the most valuable professional sporting leagues in the world. Competitive advantages in sports are reduced daily, yet for some team sports, like Basketball, data analysis is an area as fans of “Moneyball” are aware can provide an alternate option to under-resourced teams to compete against the wealthier teams.(1) 
+
+
+## 2.	Reading and cleaning the raw data
+
+install and load the library's below for use in this project.
+
+```{r packages, message=FALSE}
+
+library(tidyverse) # include all required packages at the start
+library(dplyr) 
+library(readr) 
+library(ggplot2)
+library(magrittr)
+library(knitr)
+library(broom)
+library(kableExtra)
+
+```
+
+### 2.1. Data sources
+
+Load the following databases. Explanations of the variables within each data set can be found within the README.md
+
+1. [2018-19_nba_player-statistics.csv](https://www.basketball-reference.com/leagues/NBA_2019_totals.html)  
+
+2. [2018-19_nba_player-salaries.csv](https://hoopshype.com/salaries/)  
+
+3. [2018-19_nba_team-statistics_1.csv](https://www.basketball-reference.com/leagues/NBA_2019.html)  
+
+4. [2018-19_nba_team-statistics_2.csv](https://www.basketball-reference.com/leagues/NBA_2019.html)
+
+5. [2019-20_nba_team-payroll.csv](https://hoopshype.com/salaries/)  
+
+## 2.2. Read data
+
+Read in the .csv data files using the `read_csv()` function from the `readr` package. 
+
+```{r read_data, message=FALSE} 
+
+## Read in the player data ----
+player_stats <- read_csv("data/raw/2018-19_nba_player-statistics.csv") # player stats
+player_sal <- read_csv("data/raw/2018-19_nba_player-salaries.csv") # players salaries
+
+## Read in the team data ----
+team_stats1 <- read_csv("data/raw/2018-19_nba_team-statistics_1.csv") # team stats
+team_stats2 <- read_csv("data/raw/2018-19_nba_team-statistics_2.csv") # team stats
+team_pay <- read_csv("data/raw/2019-20_nba_team-payroll.csv") # team payroll
+```
+
+## 2.3. Data Wrangling
+
+Begin by cleaning the player_stats data
+
+```{r data wrangling, message=FALSE}
+## Data Wrangle ----
+
+### Tidy player data ----
+
+## remove rows with "TOT" as Team
+player_stats_tidyish <- player_stats[player_stats$Tm != "TOT", ] # remove rows with "TOT" as the team. "TOT" served as a combination of player data for the 2018-29 season.
+
+## group players with multiple rows by numerical and character and join
+player_stats_ch <- player_stats_tidyish %>% 
+  group_by(player_name) %>% 
+  summarise_if(~ is.character(.) || is.factor(.), ~ paste(., collapse="_"))
+
+player_stats_age <- player_stats_tidyish %>% 
+  group_by(player_name) %>% 
+  summarise(across(c(Age), mean))
+
+player_stats_num <- player_stats_tidyish %>% 
+  group_by(player_name) %>% 
+  summarise(across(c(G, GS, MP, FG, FGA, `FG%`, `3P`, `3PA`, `3P%`, `2P`, `2PA`, `2P%`, `eFG%`, FT, FTA, 'FT%', ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS), sum))
+
+player_stats_tidy <- inner_join(player_stats_ch, player_stats_age, by = c("player_name"))
+player_stats_tidy <- inner_join(player_stats_tidy, player_stats_num, by = c("player_name"))
+
+### Transforming player_statistics data ----
+
+## rename variables
+player_stats_transformed <- rename(player_stats_tidy, FGp = 'FG%', x3P = '3P', x3PA = '3PA', x3Pp = '3P%', x2P = '2P', x2PA = '2PA', x2Pp = '2P%', eFGp = 'eFG%', FTp = 'FT%')
+
+### Create new variables ----
+
+## Games started percentage - to have a variable to indicate the percentage of games started from games played in. This variable will be used to create a categorical variable based on its percentage output.
+player_stats_transformed <- mutate(player_stats_transformed, GSp = GS/G)
+
+### Assist to turnover ratio "AST_to_TOV_ratio
+player_stats_transformed <- mutate(player_stats_transformed, AST_to_TOV_ratio = AST/TOV) # New variable AST_to_TOV_ratio created for assist to turnover ratio as a player metric for point guards
+
+### 'Efficiency' rating for individual players 'EFF'. EFF is an individual player efficiency rating this project will use to measure a players performance.
+
+#### EFF - Individual player efficiency (2)
+
+#### The NBA publishes online all of the basic statistics recorded officially by the league. Individual player efficiency is expressed there by a stat referred to as 'efficiency' and abbreviated EFF.
+
+#### It is derived by a simple formula: 
+
+#### (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TOV) / GP
+
+## new variables required to calculate EFF - "FG_miss", "FT_miss"
+player_stats_transformed <- mutate(player_stats_transformed, FG_miss = FGA - FG) # New variable
+player_stats_transformed <- mutate(player_stats_transformed, FT_miss = FTA - FT) # New variable
+player_stats_transformed <- mutate(player_stats_transformed, EFF = (PTS + TRB + AST + STL + BLK - FG_miss - FT_miss - TOV)/G) # New variable EFF created as a measure of player rating
+
+## create new _per_game variable for MP, FG, FGA, x3P, x3PA, x2P, x2PA, FT, FTA, ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS
+
+player_stats_transformed <- mutate(player_stats_transformed, 
+                                   MP_per_game = MP/G,
+                                   ORB_per_game = ORB/G, 
+                                   DRB_per_game = DRB/G, 
+                                   TRB_per_game = TRB/G, 
+                                   AST_per_game = AST/G, 
+                                   STL_per_game = STL/G, 
+                                   BLK_per_game = BLK/G, 
+                                   TOV_per_game = TOV/G, 
+                                   PTS_per_game = PTS/G)
+
+## combine the player salary data to the tidier player_stats data
+player_stats_clean <- right_join(x = player_stats_transformed, y = player_sal[-c(1)], by = c("player_name")) # combine players_stats and player salary data
+
+## dollars_per_EFF
+player_stats_clean <- mutate(player_stats_clean, dollars_per_EFF = salary/EFF) # New variable dollars_per_EFF created as a player value metric
+
+## dollars_per_PTS_per_game
+player_stats_clean <- mutate(player_stats_clean, dollars_per_PTS_per_game = salary/PTS_per_game) # New variable dollars_per_PTS_per_game created as a measure of player value metric
+
+## round to 3 decimal places across the data frame
+
+player_stats_clean <- player_stats_clean %>% 
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+## Create "Starter" or "Non-Starter" variable
+player_stats_clean <- mutate(player_stats_clean, Starter = ifelse(GSp > 0.7, "Starter", "Non-Starter")) # New categorical variable to determine if player is a starter or non-starter to filter for selecting starting 5. Player must have started 70% of games to be considered as a starter for this project
+
+```
+
+This should provide you with the player_stats_clean tibble data frame. There should be 576 observations with a length of 47 (46 variables per observation).
+
+Then clean the team_stats data
+
+```{r data wrangle_team data, message=FALSE}
+## Tidy team data ----
+
+## combine team data
+team_stats_combined <- right_join(x = team_stats1[-c(1,23,24,25)], y = team_stats2[-c(1)], by = c("Team")) # combine team_stats data
+
+team_stats_transformed <- rename(team_stats_combined, x3PAr = '3PAr', TSp = 'TS%', ORBp = 'ORB%', TOVp = 'TOV%', DRBp = 'DRB%', FGp = 'FG%', x3P = '3P', x3PA = '3PA', x3Pp = '3P%', x2P = '2P', x2PA = '2PA', x2Pp = '2P%', eFGp = 'eFG%', FTp = 'FT%')
+
+## new "_per_game" in teams_stats
+
+team_stats_transformed <- mutate(team_stats_transformed, 
+                                   MP_per_game = MP/G,
+                                   FG_per_game = FG/G,
+                                   FGA_per_game = FGA/G,
+                                   x3P_per_game = x3P/G,
+                                   x3PA_per_game = x3PA/G, 
+                                   x2P_per_game = x2P/G, 
+                                   x2PA_per_game = x2PA/G, 
+                                   FT_per_game = FT/G, 
+                                   FTA_per_game = FTA/G, 
+                                   ORB_per_game = ORB/G, 
+                                   DRB_per_game = DRB/G, 
+                                   TRB_per_game = TRB/G, 
+                                   AST_per_game = AST/G, 
+                                   STL_per_game = STL/G, 
+                                   BLK_per_game = BLK/G, 
+                                   TOV_per_game = TOV/G, 
+                                   PF_per_game = PF/G, 
+                                   PTS_per_game = PTS/G)
+
+team_stats_clean <- team_stats_transformed %>% 
+  mutate(across(where(is.numeric), ~ round(., 2)))
+```
+
+
+## 3. Exploratory analysis 
+
+Exploratory analysis focused on the simple notion that if you score more points in a game than your opposition then you win.
+
+Then use the `filter()` function to create a smaller database for players that started greater than 70% of games in the 2018-19 NBA Season.
+
+```{r filter starters, message=FALSE}
+## Filter Player Stats by Starter Status ----
+
+player_stats_starters <- filter(player_stats_clean, Starter == "Starter")
+
+```
+
+Then create some summary tables by filtering by playing position.
+
+```{r filter player position, message=FALSE}
+## Filter Player Stats by Starter Status ----
+
+player_stats_starters <- filter(player_stats_clean, Starter == "Starter")
+
+## Filter Player Stats by Player Positions ----
+
+## filter players into positions to select a starting player from each position
+
+### Point Guards ----
+player_stats_PG <- filter(player_stats_starters, Pos == "PG")
+
+### Shooting Guards ----
+player_stats_SG <- filter(player_stats_starters, Pos == "SG")
+
+### Small Forwards ----
+player_stats_SF <- filter(player_stats_starters, Pos == "SF")
+
+### Power Forwards ----
+player_stats_PF <- filter(player_stats_starters, Pos == "PF")
+
+### Centres ----
+player_stats_C <- filter(player_stats_starters, Pos == "C")
+```
+
+### 3.2. Check distribution of variables
+
+Next, we check the distribution of key metrics, beginning with points per game
+
+```{r distribution, message=FALSE}
+## points per game
+ggplot(team_stats_clean, aes(PTS_per_game)) + 
+  geom_histogram(fill = "dodgerblue", colour = "navy", bins = 15)
+
+## total rebounds per game
+ggplot(team_stats_clean, aes(TRB_per_game)) + 
+  geom_histogram(fill = "dodgerblue", colour = "navy", bins = 15)
+
+## assists per game
+ggplot(team_stats_clean, aes(AST_per_game)) + 
+  geom_histogram(fill = "dodgerblue", colour = "navy", bins = 15)
+
+## steals per game
+ggplot(team_stats_clean, aes(STL_per_game)) + 
+  geom_histogram(fill = "dodgerblue", colour = "navy", bins = 15)
+
+## blocks per game
+ggplot(team_stats_clean, aes(BLK_per_game)) + 
+  geom_histogram(fill = "dodgerblue", colour = "navy", bins = 15)
+
+```
+
+### 3.3. Check for relationships between variables
+
+Next, we check for correlations between key metrics and winning games of basketball
+
+```{r simple and multiple linear regression, message=FALSE}
+
+## Looking for correlations in team data ----
+
+## Check team stats data for correlations between metrics and Games Won
+
+## initial linear correlation between "_per_game" metrics and games won
+
+## points per game
+ggplot(team_stats_clean, aes(x = W, y = PTS_per_game)) + 
+  geom_point(colour = "dodgerblue") + 
+  labs(title = "Season wins by points per game", x = "Season Wins", y = "Points per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## assists per game
+ggplot(team_stats_clean, aes(x = W, y = AST_per_game)) + 
+  geom_point(alpha = 0.5, colour = "dodgerblue") + 
+  labs(title = "Season wins by assists per game", x = "Season Wins", y = "Assists per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## total rebounds per game
+ggplot(team_stats_clean, aes(x = W, y = TRB_per_game)) + 
+  geom_point(alpha = 0.5, colour = "dodgerblue") + 
+  labs(title = "Season wins by total rebounds per game", x = "Season Wins", y = "Rebounds per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## steals per game
+ggplot(team_stats_clean, aes(x = W, y = STL_per_game)) + 
+  geom_point(alpha = 0.5, colour = "dodgerblue") + 
+  labs(title = "Season wins by steals per game", x = "Season Wins", y = "Steals per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## blocks per game
+ggplot(team_stats_clean, aes(x = W, y = BLK_per_game)) +
+  geom_point(alpha = 0.5, colour = "dodgerblue") + 
+  labs(title = "Season wins by blocks per game", x = "Season Wins", y = "Blocks per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## turnovers per game
+ggplot(team_stats_clean, aes(x = W, y = TOV_per_game)) + 
+  geom_point(alpha = 0.5, colour = "dodgerblue") + 
+  labs(title = "Season wins by turnovers per game", x = "Season Wins", y = "Turnovers per game") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## multiple linear regression
+fit <- lm(W ~ PTS_per_game + AST_per_game + TRB_per_game + STL_per_game + BLK_per_game + TOV_per_game, data = team_stats_clean)
+tidy(fit, conf.int = TRUE)
+
+## Check for linearity 
+car::avPlots(fit)
+
+## Check for collinearity 
+pairs(formula = ~ PTS_per_game + AST_per_game + TRB_per_game + STL_per_game + BLK_per_game + TOV_per_game, data = team_stats_clean)
+car::vif(fit)
+sqrt(car::vif(fit))
+
+## we can surmise that there are a number of variables that are correlated to winning games of basketball
+
+## PTS_per_game was highly correlated with an increase of 1.04 wins per season per 1 point increase scored per game.
+
+```
+
+### 3.4. Check for relationships between player variables
+
+As other variables appear related, the "EFF" (individual player 'efficiency') score for individual players will be a good metric to use when selecting a starting five, as well as points per game (PTS_per_game) and using these variables to establish value metrics by dividing the player salary by both the EFF and PTS_per_game variables.
+
+```{r player_correlations, message=FALSE}
+
+## Player correlations
+
+## $/EFF
+ggplot(player_stats_starters, aes(x = salary/1000000, y = EFF, colour = Pos)) + 
+  geom_point() + 
+  labs(x = "Efficiency", y = "Salary") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+## $/PTS_per_game
+ggplot(player_stats_starters, aes(x = salary/1000000, y = PTS_per_game, colour = Pos)) + 
+  geom_point() + 
+  labs(x = "Points per game", y = "Salary") + 
+  geom_smooth(method = "lm", se = FALSE, colour = "magenta")
+
+```
+
+
+## 4. Data modelling and results
+
+summarise the top candidates from the analysis for each position and then select a player from each of the 5 traditional starting position.
+
+```{r model tables, message=FALSE}
+
+# Present Tables ----
+
+## Present tables for each position based off of the key metrics
+# 1. PTS_per_game
+# 2. EFF 
+# 3. dollars_per_EFF
+# 4. dollars_per_PTS_per_game
+# 5. salary
+
+## Point Guard ----
+PG_summary_table <- player_stats_PG %>%
+  select(player_name, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game, salary ) %>%
+  arrange(desc(PTS_per_game), salary) %>%
+  top_n(20)
+
+## visualisation table for PG
+kbl(PG_summary_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(1, bold = T, color = "white", background = "red")
+
+## Shooting Guard ----
+SG_summary_table <- player_stats_SG %>%
+  select(player_name, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game, salary ) %>%
+  arrange(desc(PTS_per_game), salary) %>%
+  top_n(20)
+
+## visualisation table for SG
+kbl(SG_summary_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(1, bold = T, color = "white", background = "red")
+
+## Small Forward ----
+
+SF_summary_table <- player_stats_SF %>%
+  select(player_name, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game, salary ) %>%
+  arrange(desc(PTS_per_game), salary) %>%
+  top_n(20)
+
+## visualisation table for SF
+kbl(SF_summary_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(3, bold = T, color = "white", background = "red")
+
+## Power Forward ----
+
+PF_summary_table <- player_stats_PF %>%
+  select(player_name, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game, salary ) %>%
+  arrange(desc(PTS_per_game), salary) %>%
+  top_n(20)
+
+## visualisation table for PF
+kbl(PF_summary_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(1, bold = T, color = "white", background = "red")
+
+## Centre ----
+
+C_summary_table <- player_stats_C %>%
+  select(player_name, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game, salary) %>%
+  arrange(desc(PTS_per_game), salary) %>%
+  top_n(20)
+
+## visualisation table for C
+kbl(C_summary_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(3, bold = T, color = "white", background = "red")
+
+```
+
+Select the starting five
+
+```{r starting five, message=FALSE}
+
+## Starting 5 ----
+
+starting_5_table <- player_stats_starters %>%
+  slice(c(37, 50, 54, 75, 76)) %>%
+  select(Pos, player_name, salary, PTS_per_game, EFF, dollars_per_EFF, dollars_per_PTS_per_game)
+
+print(starting_5_table)
+
+## visualisation table for starting five
+kbl(starting_5_table) %>%
+  kable_paper("striped", full_width = F) %>%
+  row_spec(1, bold = T, color = "white", background = "red") %>%
+  row_spec(2, bold = T, color = "white", background = "black") %>%
+  row_spec(3, bold = T, color = "white", background = "red") %>%
+  row_spec(4, bold = T, color = "white", background = "black") %>%
+  row_spec(5, bold = T, color = "white", background = "red")
+
+```
+
+## 5. Player recommendations
+
+Starter Criterion
+To establish a criterion to determine whether a player was a starting-level calibre of player, the team analysists determined that a player had to have started 70% of games in the 2018-19 NBA Season to be considered a ‘Starter’. This criterion allowed for ‘Non-Starters’ to be filtered out the player database, thus reducing the available players to be selected to the starting five to 140 players from an initial database of 576 players.
+
+The Starting 5
+
+Point Guard: James Harden
+James Harden is selected to the point guard position as he ranks 1st in Starting PGs in points per game (36.1), and individual efficiency rating (33.09). Harden ranked 18th and 16th in the value metrics ($/efficiency and $/points per game respectively), but despite this, and his hefty price tag (salary: $30,570,000), his points per game (the highest in the league) was irresistible when considering that the team data suggests that the more points a team scores per game, the more likely they are to win. Harden also ranked 1st in steals per game, and 9th in assists per game for additional key metrics at the point guard position.
+
+James Harden was selected ahead of D’Angelo Russell ($7,019,698), Ben Simmons ($6,434,520), Jamal Murray ($3,499,800), Trae Young ($5,363,280).
+
+Shooting Guard: Devin Booker
+Devin Booker is selected as the shooting guard. Booker presents amazing value whilst still on his rookie contract ($3,314,365). Booker ranked second on both value metrics ($/EFF and $/points per game) to Malcolm Brogdon, but he ranked 1st for shooting guards in points per game (26.6) and third for individual player efficiency (23.0) behind Bradley Beal (24.2) and Jrue Holiday (23.0). Devin Booker was the easiest player to recommend, as he ranks in the top 4 in the key metrics, and he remains on a small contract (due to his rookie contract). Devin Booker also ranked 2nd in assists per game, and 5th in free throw percentage for additional key metrics at the shooting guard position.
+
+Devin Booker was selected ahead of Malcolm Brogdon ($1,544,951).
+
+Small Forward: Kawhi Leonard
+Kawhi Leonard is selected in the small forward position. Fresh from leading his team to the 2018-19 NBA Championship with the Toronto Raptors, Leonard put up 26.6 points per game (ranked 3rd amongst starting small forwards), with an individual player efficiency rating of 26.87 (ranked 4th). Leonard also ranked 2nd in steals per game, 3rd in total rebounds per game and 6th in assists per game for additional key metrics at the small forward position.
+
+Whilst playing the same position as LeBron James, Kevin Durant, and Paul George, Kawhi Leonard was chosen over these players as he had much better value metrics, with his 23.1-million-dollar salary between seven and twelve million dollars cheaper than his rivals. Other notable players at the position were the young trio of Jayson Tatum, Brandon Ingram, and Julius Winslow. Ultimately, these players are unable to match the output on the court that Kawhi has been proven he is able to produce.
+
+Power Forward: Giannis Antetokounmpo
+Giannis Antetokounmpo was selected as the first choice at the power forward position. Giannis ranked first at the power forward position for points per game (27.7) and for individual player efficiency (35.25). Antetokounmpo’s efficiency score of 35.25 was the highest of all classified ‘Starters’ in the 2018-2019 NBA season. Despite ranking 14th for his position for each of the value metrics, Antetokounmpo still represents good spending at $24,157,304 for the 2019-20 NBA season.
+
+Antetokounmpo also ranked 1st in total rebounds per game and blocks per game, 2nd in assists per game, and 4th in steals per game for additional key metrics at the power forward position.
+
+Giannis Antetokounmpo was selected ahead of Pascal Siakam ($1,544,951) in main part due to his points per game and efficiency ratings being far superior to Siakam’s. 
+
+Centre: Karl-Anthony Towns
+Karl-Anthony Towns is selected at the centre position. Averaging a 24.6 points per game (ranked third at the position), Towns also ranked third in individual efficiency (30.3). Karl-Anthony Towns ranked 8th for his position in $/EFF ($258,000/EFF point), and 7th in $/points per game ($321,000/point per game).
+
+Towns also ranked 5th in total rebounds per game, and 9th in blocks per game for additional key metrics at the centre position.
+
+Karl-Anthony Towns was selected ahead of other value options Jarrett Allen ($2,034,120) and Thomas Bryant ($1,378,242) due to his higher points per game and efficiency rating. Whilst he was also able to match the production of Joel Embiid ($25,467,250) and Anthony Davis ($25,434,263) at a much affordable price (Karl-Anthony Towns - $7,839,435).
+
+
+## 6. Summary
+
+In summary, the Chicago Bulls Data Analysist has recommended to the General Manager the following starting five:
+
+PG: James Harden ($30,570,000)
+SG: Devin Booker ($3,314,365)
+SF: Kawhi Leonard ($23,114,066)
+PF: Giannis Antetokounmpo ($24,157,304)
+C: Karl-Anthony Towns ($7,839,435)
+
+This starting five would account for a considerable chunk of the Chicago Bull’s salary cap, however, given the exploratory data analysis showed that points per game had a strong correlation to 
+
+Players that are significantly under-valued that represent good bench options for the General Manager are at point guard: (1) D’Angelo Russell, (2) Ben Simmons, (3) Trae Young, (4) De’Aaron Fox and (5) Jamal Murray; at shooting guard: (1) Malcolm Brogdon; at small forward: (1) Jayson Tatum, (2) Brandon Ingram, (3) Julius Winslow; at power forward: (1) Pascal Siakam; and at centre: (1) Jarrett Allen, and (2) Thomas Bryant. In different iterations of the starting five, any of the players could have justified a starting five position based on the key metrics, but the value these players represented on the $/EFF and $/points per game variables.
+
+Ultimately if this starting five line-up was able to be assembled, there is no reason why you couldn’t justify the $89M it would cost. If able to produce the output that they achieved in the 2018-19 NBA season, the starting five would amass 141.4 points per game. As the multiple linear regression model indicated, that if all other considered variables (rebounds per game, assists per game, steals per game, blocks per game, turnovers per game) remained constant, then based on team data, an increase in points per game by one unit, would likely increase season wins by 1.04. The Milwaukee Bucks led the league in the 2018-19 NBA season with 118.1 points per game and enjoyed a league best 60-22 win-loss record. Whilst not perfect in the real world, the regression model suggests that the new starting five at the Chicago Bulls could lead the team to an 82-0 win-loss record.
+
+As shown above, there are ‘starter’ quality players that represent value that are capable of filling roster positions 6 to 11. Ben Simmons ($6.4M), Malcolm Brogdon ($1.5M), Jayson Tatum ($6.7M), Pascal Siakam ($1.5M), Jarrett Allen ($2.0M), and Thomas Bryant ($1.4M). This would then bring the total pay roster to $108.5M, leaving a figure close to $9.5M to complete the final 4 roster positions, which as shown above, would be achievable to bring in players at a cost that is on average $2.375M/player.
+
+It is accepted that only in the perfect world would a General Manager be able to assemble a roster as above, but from a pay structure perspective, the starting five line up is paying up for a “Big Three”, and then targeting productive players that are still on their rookie scale contracts to fill out the roster. These contracts are also similar in size to other contract options that exist, such as a Mid-Level Exemption (MLE) or a Veterans Minimum Contract that allow teams to pick up experienced players at a more affordable expense to the team. (3)
+
+
+## 7. Limitations
+
+There are some limitations to this statistical analysis. As described above, the suggested starting five would likely exceed an 82-0 win-loss record based off the points per game variable and its correlation to games won in the regular season.
+
+Player data was looked at from a per game perspective. Per minute calculations may be used to establish which players provide statistical impact per minute of playing time. Applying a per-minute approach however may also skew the data in favour to those ‘non-starting’ players that perform well in limited minutes of court time but may not be able to reproduce that output were they playing the higher minutes that ‘starters’ typically play.
+
+Players were additionally sub-categorised as a ‘Starter’ if they had started 70% of games in the 2018-19 season, and as a ‘Non-Starter’ if they had started less than 70% of games in the season. However, having a criterion to meet to be considered a starting five player, provides protection for the data analysist when discussing potential options with the General Manager as you can be assured that the player can play a starting role. 
+
+## 8. Reference List
+
+1 Li Y, Wang L, Li F. A data-driven prediction approach for sports team performance and its application to National Basketball Association. Omega. Omega; 2021;98:102123. 
+2 https://en.wikipedia.org/wiki/Efficiency_(basketball) 
+3 https://en.wikipedia.org/wiki/NBA_salary_cap
+
+## 9. Acknowledgements
+
+The author of this reproducible project would like to acknowledge Jocelyn Mara for providing the scenario and data for this project.
